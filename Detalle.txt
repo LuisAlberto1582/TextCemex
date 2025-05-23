@@ -1,0 +1,44 @@
+USE [Keytia5]
+GO
+
+/****** Object:  Table [K5Cemex].[InventarioSailpoint]    Script Date: 23/05/2025 04:13:03 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [K5Cemex].[InventarioSailpoint](
+	[iCodRegistro] [int] IDENTITY(-2147483648,1) NOT NULL,
+	[iCodCatalogo] [int] NOT NULL,
+	[FechaPub] [varchar](100) NULL,
+	[RegCarga] [int] NOT NULL,
+	[DisplayName] [varchar](max) NULL,
+	[FirstName] [varchar](max) NULL,
+	[LastName] [varchar](max) NULL,
+	[WorkEmail] [varchar](max) NULL,
+	[Created] [varchar](max) NULL,
+	[CloudLifecycleState] [varchar](max) NULL,
+	[ManagerDisplayName] [varchar](max) NULL,
+	[Country] [varchar](max) NULL,
+	[EndDate] [varchar](max) NULL,
+	[Location] [varchar](max) NULL,
+	[PersonalEmail] [varchar](max) NULL,
+	[StartDate] [varchar](max) NULL,
+	[CemexCompany] [varchar](max) NULL,
+	[CemexCountryCodeUserLocation] [varchar](max) NULL,
+	[CemexEmployeeNumber] [varchar](max) NULL,
+	[CemexId] [varchar](max) NULL,
+	[CountryCode] [varchar](max) NULL,
+	[EmployeeType] [varchar](max) NULL,
+	[ExpirationDate] [varchar](max) NULL,
+	[ManagerCemexId] [varchar](max) NULL,
+	[ManagerDn] [varchar](max) NULL,
+	[SapId] [varchar](max) NULL,
+	[iCodUsuario] [int] NULL,
+	[TimeStampIns] [datetime] NOT NULL,
+	[TimeStampUpd] [datetime] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+
