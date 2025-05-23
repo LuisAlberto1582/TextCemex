@@ -1,44 +1,164 @@
 USE [Keytia5]
 GO
-
-/****** Object:  Table [K5Cemex].[InventarioSailpoint]    Script Date: 23/05/2025 04:13:03 p. m. ******/
+/****** Object:  StoredProcedure [K5Cemex].[ReporteRUPCDetalleMensualEUA]    Script Date: 23/05/2025 04:23:48 p. m. ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
+ALTER PROCEDURE [K5Cemex].[ReporteRUPCDetalleMensualEUA]
+@FechaPub varchar(max) = '2025-08-01'
+AS
+BEGIN
+    SET NOCOUNT ON;
+	    DECLARE @FechaParametro DATE = CONVERT(DATE, @FechaPub);
 
-CREATE TABLE [K5Cemex].[InventarioSailpoint](
-	[iCodRegistro] [int] IDENTITY(-2147483648,1) NOT NULL,
-	[iCodCatalogo] [int] NOT NULL,
-	[FechaPub] [varchar](100) NULL,
-	[RegCarga] [int] NOT NULL,
-	[DisplayName] [varchar](max) NULL,
-	[FirstName] [varchar](max) NULL,
-	[LastName] [varchar](max) NULL,
-	[WorkEmail] [varchar](max) NULL,
-	[Created] [varchar](max) NULL,
-	[CloudLifecycleState] [varchar](max) NULL,
-	[ManagerDisplayName] [varchar](max) NULL,
-	[Country] [varchar](max) NULL,
-	[EndDate] [varchar](max) NULL,
-	[Location] [varchar](max) NULL,
-	[PersonalEmail] [varchar](max) NULL,
-	[StartDate] [varchar](max) NULL,
-	[CemexCompany] [varchar](max) NULL,
-	[CemexCountryCodeUserLocation] [varchar](max) NULL,
-	[CemexEmployeeNumber] [varchar](max) NULL,
-	[CemexId] [varchar](max) NULL,
-	[CountryCode] [varchar](max) NULL,
-	[EmployeeType] [varchar](max) NULL,
-	[ExpirationDate] [varchar](max) NULL,
-	[ManagerCemexId] [varchar](max) NULL,
-	[ManagerDn] [varchar](max) NULL,
-	[SapId] [varchar](max) NULL,
-	[iCodUsuario] [int] NULL,
-	[TimeStampIns] [datetime] NOT NULL,
-	[TimeStampUpd] [datetime] NULL
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
+    -- Saca el mes de la fecha recibida
+    DECLARE @Mes INT = MONTH(@FechaParametro);
+	DECLARE @Year INT = YEAR(@FechaParametro);
+	DECLARE @IcodCatalogo INT = YEAR(@FechaParametro);
+	DECLARE @ICODPAIS int = 720;
+	Select @IcodCatalogo = [CargaRUPCID] from K5Cemex.CargaInventarioRUPC where ICodCatAnio = @Year and ICodCatMes = @Mes and ICodCatPais = @ICODPAIS  
+    DECLARE @MesPasado DATETIME = DATEADD(MONTH, -1, GETDATE());
+
+    SELECT 
+        -- Columnas base de InventarioRUPC
+        RUPC.[Model],
+        RUPC.[Serial Number],
+
+        -- ========================
+        -- AD
+        -- ========================
+		CASE 
+            WHEN EXISTS (
+                SELECT 1 
+                FROM K5Cemex.InventarioADCemex AD
+                WHERE AD.Name = RUPC.[Serial Number]
+            ) THEN 'Si'
+            ELSE 'No'
+        END AS [Active directory by Serial],
 
 
+        -- ========================
+        -- SCCM
+        -- ========================
+		CASE 
+            WHEN EXISTS (
+                SELECT 1 
+                FROM K5Cemex.InventarioSCM SCCM
+                WHERE SCCM.[SerialNumber] = RUPC.[Serial Number]
+            ) THEN 'Si'
+            ELSE 'No'
+        END AS [SCCM by Serial Number],
+
+        -- ========================
+        -- CMDB
+        -- ========================
+        CMDB.[Country] AS [Conutry of CMDB by Serial Number],
+        CMDB.[AssignedToName] AS [Assigned to VP of CMDB by Serial Number],
+        CMDB.[OwnedByCompany] AS [OWNED_BY_COMPANY],
+        CMDB.[AssignedToUsername] AS [Assigned to Cemex ID of CMDB by Serial Number],
+        CMDB.[AssignedToEmail] AS [Assigned to E-mail of CMDB by Serial Number],
+        CMDB.[AssignedToName] AS [Assigned to of CMDB by Serial Number],
+        CMDB.[AssignedToName] AS [Comparison of names],
+        CMDB.[HardwareStatus] AS [hardware_status by Serial Number],
+        CMDB.[HardwareSubstatus] AS [hardware_substatus by Serial Number],
+
+        -- ========================
+        -- Headcount
+		 CASE 
+            WHEN Personacmdb.EmployeeName IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END AS [HC by assigned to of CMDB],
+		CASE 
+            WHEN PersonaRUPC.EmployeeName IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END AS [HC by assigned to of Baseline],
+		
+		CASE 
+            WHEN Personacmdb.EmployeeName IS NOT NULL or PersonaRUPC.EmployeeName IS NOT NULL  THEN 'Sí'
+            ELSE 'No'
+        END AS [HC final],
+        Personacmdb.EmployeeName AS [HC_Central],
+        CASE 
+            WHEN Personacmdb.EmployeeName IS NOT NULL OR PersonaRUPC.EmployeeName IS NOT NULL THEN 'Activo'
+            ELSE 'Inactivo'
+        END AS [HC_StatusFinal],
+
+        -- ========================
+        -- CIAMP
+		CASE 
+            WHEN CIAMP_CMDB.ACT_NAME IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END AS [CIAMP by assigned to of CMDB],
+		CASE 
+            WHEN CIAMP_RUPC.ACT_NAME IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END AS [CIAMP by assigned to of Baseline],
+        CASE 
+            WHEN CIAMP_RUPC.ACT_NAME IS NOT NULL or CIAMP_RUPC.ACT_NAME IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END AS [CIAMP_Final],
+        CIAMP_CMDB.ACT_NAME AS [External/Internal by assigned to of CMDB],
+        CIAMP_RUPC.ACT_NAME AS [CIAMP by assigned to of Baseline],
+        ISNULL(CIAMP_RUPC.ACT_NAME, CIAMP_RUPC.ACT_NAME) AS [External/Internal final],
+		 RUPC.[Name],
+        RUPC.[Assigned],
+        RUPC.[Assigned Email],
+        RUPC.[Direct Supervisor],
+        RUPC.[Direct Supervisor Email],
+        RUPC.[Computer Type],
+        RUPC.[Hardware Substatus],
+        RUPC.[Location]
+
+    FROM 
+        K5Cemex.InventarioRUPC RUPC
+
+
+    -- CMDB
+	LEFT JOIN (
+		SELECT SerialNumber,Country, AssignedToName, [OwnedByCompany],[AssignedToUsername],[AssignedToEmail],[HardwareStatus],[HardwareSubstatus]
+		FROM K5Cemex.InventarioCMDBCemex
+		WHERE SerialNumber IS NOT NULL AND SerialNumber <> ''
+	) CMDB
+    ON RUPC.[Serial Number] = CMDB.[SerialNumber]
+
+LEFT JOIN (
+    SELECT EmailAddress, EmployeeName FROM K5Cemex.UsaHeadcount
+    UNION
+    SELECT EmailAddress, EmployeeName FROM K5CEMEX.NonUsa
+) AS Personacmdb
+    ON CMDB.AssignedToEmail = Personacmdb.EmailAddress AND CMDB.AssignedToEmail IS NOT NULL AND CMDB.AssignedToEmail <> ''
+
+LEFT JOIN (
+    SELECT EmailAddress, EmployeeName FROM K5Cemex.UsaHeadcount
+    UNION
+    SELECT EmailAddress, EmployeeName FROM K5CEMEX.NonUsa
+) AS PersonaRUPC
+    ON RUPC.[Assigned Email] = PersonaRUPC.EmailAddress AND RUPC.[Assigned Email] IS NOT NULL AND RUPC.[Assigned Email] <> ''
+
+LEFT JOIN K5Cemex.InventarioHeadMxHcActivo HC2
+    ON RUPC.[Assigned Email] = HC2.Email and (RUPC.[Assigned Email] is null or RUPC.[Assigned Email] <> '')
+	-- CIAMP
+OUTER APPLY (
+    SELECT TOP 1 ACT_NAME
+    FROM K5CEMEX.InventarioCiamp
+    WHERE CMDB.AssignedToEmail IN (
+        USR_EMAIL, 
+        USR_UDF_CEMEXMAIL, 
+        USR_UDF_EXTERNALEMAIL
+    )
+    AND (USR_EMAIL IS NOT NULL OR USR_UDF_CEMEXMAIL IS NOT NULL OR USR_UDF_EXTERNALEMAIL IS NOT NULL)
+) CIAMP_CMDB
+OUTER APPLY (
+    SELECT TOP 1 ACT_NAME
+    FROM K5CEMEX.InventarioCiamp
+    WHERE RUPC.[Assigned Email] IN (
+        USR_EMAIL, 
+        USR_UDF_CEMEXMAIL, 
+        USR_UDF_EXTERNALEMAIL
+    )
+    AND (USR_EMAIL IS NOT NULL OR USR_UDF_CEMEXMAIL IS NOT NULL OR USR_UDF_EXTERNALEMAIL IS NOT NULL)
+) CIAMP_RUPC
+	where RUPC.CargaRUPCID = @IcodCatalogo AND RUPC.[Serial Number] is not null 
+	--AND RUPC.[Serial Number] = '5CG23621D1'
+END
